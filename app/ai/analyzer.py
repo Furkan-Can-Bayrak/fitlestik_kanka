@@ -24,12 +24,15 @@ class MessageAnalyzer:
         Returns:
             dict: Processing result with created tasks, expenses, and debts
         """
+        print(f"[AI ANALYZER] Starting analysis for: '{message.content}'")
+        
         # Analyze message with Gemini
         analysis = self.gemini.analyze_message(
             message.content,
             sender.username,
             receiver.username
         )
+        print(f"[AI ANALYZER] Gemini returned: {analysis}")
         
         # Store analysis result
         message.ai_analysis = analysis

@@ -6,8 +6,8 @@ from typing import Optional
 # Configure Gemini API
 genai.configure(api_key=settings.GOOGLE_API_KEY)
 
-# Initialize the model
-model = genai.GenerativeModel('gemini-pro')
+# Initialize the model (using gemini-2.5-flash - latest fast model)
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 
 class GeminiClient:
@@ -56,10 +56,13 @@ class GeminiClient:
         Confidence should be a float between 0 and 1.
         """
         
+        print(f"[GEMINI] Sending to API: {message}")
+        
         try:
             response = model.generate_content(prompt)
             # Assuming the response is directly parsable JSON
             analysis_text = response.text.strip()
+            print(f"[GEMINI] API response: {analysis_text}")
             
             # Attempt to parse JSON, handle potential markdown formatting
             if analysis_text.startswith("```json"):
@@ -68,8 +71,12 @@ class GeminiClient:
                 analysis_text = analysis_text[:-3]
             
             analysis = json.loads(analysis_text)
+            print(f"[GEMINI] Successfully parsed analysis: {analysis}")
             return analysis
         except Exception as e:
-            print(f"Gemini API error: {e}")
+            print(f"[GEMINI ERROR] Exception: {e}")
+            print(f"[GEMINI ERROR] Falling back to normal")
+            import traceback
+            traceback.print_exc()
             # Fallback for API errors or invalid JSON
             return {"type": "normal", "item": None, "amount": None, "confidence": 0.0}

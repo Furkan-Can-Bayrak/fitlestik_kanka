@@ -394,6 +394,10 @@
             
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                console.log('[WS] Message received:', data);
+                if (data.ai_analysis) {
+                    console.log('[AI] Analysis:', data.ai_analysis);
+                }
                 handleMessage(data);
             };
             

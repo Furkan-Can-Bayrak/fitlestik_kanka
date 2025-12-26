@@ -96,8 +96,10 @@ async def process_message(message_data: dict, sender: User, db: Session):
         db.refresh(new_message)
         
         # Analyze message with AI and process
+        print(f"[DEBUG] Analyzing message: {content}")
         analyzer = MessageAnalyzer(db)
         analysis_result = analyzer.analyze_and_process(new_message, sender, receiver)
+        print(f"[DEBUG] Analysis result: {analysis_result['analysis']}")
         
         # Send message to both sender and receiver
         chat_message = {
