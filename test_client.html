@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borç Takip - WebSocket Test Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 600px;
+        }
+        
+        .sidebar {
+            background: #f7f9fc;
+            padding: 20px;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+        }
+        
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        
+        .message.sent {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.received {
+            background: white;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .message.system {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 90%;
+        }
+        
+        .message.notification {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            margin: 10px auto;
+            max-width: 90%;
+        }
+        
+        .message-meta {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        
+        .ai-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            font-size: 0.75em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 5px;
+        }
+        
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .balance-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .balance-item strong {
+            color: #667eea;
+        }
+        
+        #messageInput {
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageText {
+            flex: 1;
+        }
+        
+        #sendBtn {
+            width: auto;
+            padding: 10px 25px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Destekli Borç Takip Sistemi</h1>
+            <p>WebSocket Test Client</p>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <div class="input-group">
+                    <label for="username">Kullanıcı Adı:</label>
+                    <input type="text" id="username" placeholder="Kullanıcı adı">
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Şifre:</label>
+                    <input type="password" id="password" placeholder="Şifre">
+                </div>
+                
+                <div class="input-group">
+                    <button id="loginBtn">Giriş Yap</button>
+                </div>
+                
+                <div id="connectionStatus" class="status disconnected">
+                    Bağlantı Yok
+                </div>
+                
+                <div class="input-group">
+                    <label for="receiverSelect">Alıcı Seç:</label>
+                    <select id="receiverSelect" disabled>
+                        <option value="">Seçiniz...</option>
+                    </select>
+                </div>
+                
+                <div class="balance-info" style="display:none;" id="balanceInfo">
+                    <h3>💰 Bakiye</h3>
+                    <div class="balance-item">
+                        <span>Borç:</span>
+                        <strong id="totalOwed">0 TL</strong>
+                    </div>
+                    <div class="balance-item">
+                        <span>Alacak:</span>
+                        <strong id="totalToCollect">0 TL</strong>
+                    </div>
+                    <div class="balance-item">
+                        <span>Net:</span>
+                        <strong id="netBalance">0 TL</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-area">
+                <div class="messages" id="messages">
+                    <div class="message system">
+                        Hoş geldiniz! Lütfen giriş yapın.
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <div id="messageInput">
+                        <input type="text" id="messageText" placeholder="Mesajınızı yazın..." disabled>
+                        <button id="sendBtn" disabled>Gönder</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const WS_BASE = 'ws://localhost:8000';
+        
+        let ws = null;
+        let token = null;
+        let currentUser = null;
+        
+        const loginBtn = document.getElementById('loginBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const messageText = document.getElementById('messageText');
+        const messagesDiv = document.getElementById('messages');
+        const receiverSelect = document.getElementById('receiverSelect');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const balanceInfo = document.getElementById('balanceInfo');
+        
+        // Login
+        loginBtn.addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                alert('Kullanıcı adı ve şifre gerekli!');
+                return;
+            }
+            
+            try {
+                // Login
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Giriş başarısız');
+                }
+                
+                const data = await response.json();
+                token = data.access_token;
+                
+                // Get current user info
+                const userResponse = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                currentUser = await userResponse.json();
+                
+                // Load users
+                await loadUsers();
+                
+                // Connect WebSocket
+                connectWebSocket();
+                
+                addSystemMessage(`${currentUser.username} olarak giriş yapıldı!`);
+                
+            } catch (error) {
+                alert('Giriş hatası: ' + error.message);
+            }
+        });
+        
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/api/users/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const users = await response.json();
+                receiverSelect.innerHTML = '<option value="">Seçiniz...</option>';
+                
+                users.forEach(user => {
+                    if (user.id !== currentUser.id) {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.username;
+                        receiverSelect.appendChild(option);
+                    }
+                });
+                
+                receiverSelect.disabled = false;
+            } catch (error) {
+                console.error('Kullanıcılar yüklenemedi:', error);
+            }
+        }
+        
+        // Connect WebSocket
+        function connectWebSocket() {
+            ws = new WebSocket(`${WS_BASE}/ws/${token}`);
+            
+            ws.onopen = () => {
+                connectionStatus.textContent = 'Bağlı';
+                connectionStatus.className = 'status connected';
+                messageText.disabled = false;
+                sendBtn.disabled = false;
+            };
+            
+            ws.onclose = () => {
+                connectionStatus.textContent = 'Bağlantı Kesildi';
+                connectionStatus.className = 'status disconnected';
+                messageText.disabled = true;
+                sendBtn.disabled = true;
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addSystemMessage('Bağlantı hatası!');
+            };
+        }
+        
+        // Handle incoming messages
+        function handleMessage(data) {
+            if (data.type === 'system') {
+                addSystemMessage(data.message);
+            } else if (data.type === 'message') {
+                addChatMessage(data);
+            } else if (data.type === 'notification') {
+                addNotification(data.message);
+            } else if (data.type === 'error') {
+                addSystemMessage('Hata: ' + data.message);
+            }
+        }
+        
+        // Send message
+        sendBtn.addEventListener('click', sendMessage);
+        messageText.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        function sendMessage() {
+            const content = messageText.value.trim();
+            const receiverId = receiverSelect.value;
+            
+            if (!content || !receiverId) {
+                alert('Alıcı seçin ve mesaj yazın!');
+                return;
+            }
+            
+            const message = {
+                receiver_id: parseInt(receiverId),
+                content: content
+            };
+            
+            ws.send(JSON.stringify(message));
+            messageText.value = '';
+        }
+        
+        // Add messages to chat
+        function addChatMessage(data) {
+            const div = document.createElement('div');
+            const isSent = data.sender_id === currentUser.id;
+            div.className = `message ${isSent ? 'sent' : 'received'}`;
+            
+            let html = `<div>${data.content}</div>`;
+            
+            if (data.ai_analysis) {
+                const type = data.ai_analysis.type;
+                if (type === 'task') {
+                    html += `<span class="ai-badge">📝 Görev</span>`;
+                } else if (type === 'expense') {
+                    html += `<span class="ai-badge">💰 Ödeme</span>`;
+                }
+            }
+            
+            html += `<div class="message-meta">${data.sender_username} • ${new Date(data.created_at).toLocaleTimeString('tr-TR')}</div>`;
+            
+            if (data.task) {
+                html += `<div style="margin-top:8px; font-size:0.9em;">✅ Görev oluşturuldu: ${data.task.item_name}</div>`;
+            }
+            
+            if (data.expense) {
+                html += `<div style="margin-top:8px; font-size:0.9em;">
+                    💵 Ödeme: ${data.expense.amount} TL (Her biri: ${data.expense.split_amount} TL)
+                </div>`;
+            }
+            
+            if (data.balance) {
+                updateBalance(data.balance);
+            }
+            
+            div.innerHTML = html;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addSystemMessage(message) {
+            const div = document.createElement('div');
+            div.className = 'message system';
+            div.textContent = message;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addNotification(message) {
+            const div = document.createElement('div');
+            div.className = 'message notification';
+            div.innerHTML = `<strong>📢 Bildirim:</strong> ${message}`;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function updateBalance(balance) {
+            balanceInfo.style.display = 'block';
+            document.getElementById('totalOwed').textContent = balance.user1_owes.toFixed(2) + ' TL';
+            document.getElementById('totalToCollect').textContent = balance.user2_owes.toFixed(2) + ' TL';
+            const net = balance.net_balance.toFixed(2);
+            document.getElementById('netBalance').textContent = net + ' TL';
+            document.getElementById('netBalance').style.color = net >= 0 ? 'green' : 'red';
+        }
+    </script>
+</body>
+</html>
+
