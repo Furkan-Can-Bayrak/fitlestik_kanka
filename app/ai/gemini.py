@@ -16,7 +16,7 @@ class GeminiClient:
     @staticmethod
     def analyze_message(message: str, sender_username: str, receiver_username: str) -> dict:
         """
-        Analyze a message to determine if it's a task, expense, or normal message
+        Analyze a message to determine if it's a task, expense, payment, or normal message
         
         Args:
             message: The message content to analyze.
@@ -30,7 +30,8 @@ class GeminiClient:
         Analyze the user message and categorize it into one of the following types:
         1. TASK: Something that needs to be acquired or done (future tense, implies an action).
         2. EXPENSE: Something was acquired or done, and a cost is mentioned (past tense, implies a transaction).
-        3. NORMAL: A regular conversational message.
+        3. PAYMENT: A debt payment was made (mentions paying/giving money back, settling debt).
+        4. NORMAL: A regular conversational message.
 
         Consider the context of a two-person household or shared expense scenario.
         
@@ -48,11 +49,20 @@ class GeminiClient:
         Message: "mop aldım 300tl"
         Output: {{"type": "expense", "item": "mop", "amount": 300, "confidence": 0.98}}
         
+        Example for PAYMENT:
+        Message: "200 TL ödedim"
+        Output: {{"type": "payment", "item": null, "amount": 200, "confidence": 0.95}}
+        
+        Example for PAYMENT (full debt):
+        Message: "borcumu kapattım"
+        Output: {{"type": "payment", "item": null, "amount": null, "confidence": 0.90}}
+        
         Example for NORMAL:
         Message: "Merhaba nasılsın?"
         Output: {{"type": "normal", "item": null, "amount": null, "confidence": 1.0}}
         
-        If an item or amount cannot be clearly extracted for TASK or EXPENSE, set them to null.
+        If an item or amount cannot be clearly extracted for TASK, EXPENSE, or PAYMENT, set them to null.
+        For PAYMENT type, if no amount is specified, set amount to null (means pay all debts).
         Confidence should be a float between 0 and 1.
         """
         

@@ -457,7 +457,9 @@
                 if (type === 'task') {
                     html += `<span class="ai-badge">📝 Görev</span>`;
                 } else if (type === 'expense') {
-                    html += `<span class="ai-badge">💰 Ödeme</span>`;
+                    html += `<span class="ai-badge">💰 Harcama</span>`;
+                } else if (type === 'payment') {
+                    html += `<span class="ai-badge" style="background:#17a2b8;">💸 Ödeme</span>`;
                 }
             }
             

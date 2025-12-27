@@ -148,6 +148,35 @@ async def process_message(message_data: dict, sender: User, db: Session):
                 "debt_id": debt.id,
                 "amount": debt.amount
             }, debt.creditor_id)
+        
+        elif analysis_result["analysis"]["type"] == "payment" and analysis_result["payment"]:
+            payment = analysis_result["payment"]
+            
+            if payment["success"]:
+                # Notify payer
+                await manager.send_personal_message({
+                    "type": "notification",
+                    "category": "payment",
+                    "message": f"✅ {payment['paid_amount']} TL ödeme yaptınız. Kalan borç: {payment['remaining_total_debt']} TL",
+                    "paid_amount": payment["paid_amount"],
+                    "remaining_debt": payment["remaining_total_debt"]
+                }, sender.id)
+                
+                # Notify receiver
+                await manager.send_personal_message({
+                    "type": "notification",
+                    "category": "payment",
+                    "message": f"💰 {sender.username}, {payment['paid_amount']} TL ödeme yaptı. Kalan alacak: {payment['remaining_total_debt']} TL",
+                    "paid_amount": payment["paid_amount"],
+                    "remaining_debt": payment["remaining_total_debt"]
+                }, receiver.id)
+            else:
+                # No debt found
+                await manager.send_personal_message({
+                    "type": "notification",
+                    "category": "payment",
+                    "message": payment["message"]
+                }, sender.id)
     
     except Exception as e:
         print(f"Error processing message: {e}")

@@ -19,10 +19,10 @@ class MessageAnalyzer:
         receiver: User
     ) -> Dict[str, Any]:
         """
-        Analyze a message and create tasks/expenses if needed
+        Analyze a message and create tasks/expenses/payments if needed
         
         Returns:
-            dict: Processing result with created tasks, expenses, and debts
+            dict: Processing result with created tasks, expenses, debts, and payments
         """
         print(f"[AI ANALYZER] Starting analysis for: '{message.content}'")
         
@@ -42,7 +42,8 @@ class MessageAnalyzer:
             "analysis": analysis,
             "task": None,
             "expense": None,
-            "debt": None
+            "debt": None,
+            "payment": None
         }
         
         # Process based on analysis type
@@ -58,6 +59,14 @@ class MessageAnalyzer:
                     analysis["item"], 
                     analysis["amount"]
                 )
+            )
+        
+        elif analysis["type"] == "payment":
+            result["payment"] = self._process_payment(
+                message, 
+                sender, 
+                receiver, 
+                analysis.get("amount")
             )
         
         return result
@@ -159,6 +168,104 @@ class MessageAnalyzer:
         
         result["debt"] = debt
         
+        return result
+    
+    def _process_payment(
+        self, 
+        message: Message, 
+        payer: User,
+        receiver: User,
+        amount: Optional[float]
+    ) -> Dict[str, Any]:
+        """
+        Process a debt payment
+        
+        Args:
+            message: Original message
+            payer: User who is paying the debt
+            receiver: User receiving the payment
+            amount: Payment amount (None means pay all debts)
+        
+        Returns:
+            dict: Payment information
+        """
+        print(f"[PAYMENT] Processing payment from {payer.username} to {receiver.username}")
+        
+        # Find active debts where payer owes to receiver
+        active_debts = self.db.query(Debt).filter(
+            Debt.debtor_id == payer.id,
+            Debt.creditor_id == receiver.id,
+            Debt.status == DebtStatus.ACTIVE
+        ).order_by(Debt.created_at).all()
+        
+        if not active_debts:
+            print(f"[PAYMENT] No active debts found")
+            return {
+                "success": False,
+                "message": "Aktif borç bulunamadı",
+                "paid_amount": 0,
+                "remaining_debts": []
+            }
+        
+        total_debt = sum(debt.amount for debt in active_debts)
+        print(f"[PAYMENT] Total debt: {total_debt} TL")
+        
+        # If amount not specified, pay all debts
+        if amount is None:
+            amount = total_debt
+        
+        # Payment cannot exceed total debt
+        if amount > total_debt:
+            amount = total_debt
+        
+        remaining_amount = amount
+        settled_debts = []
+        partially_paid_debt = None
+        
+        # Pay debts starting from oldest
+        for debt in active_debts:
+            if remaining_amount <= 0:
+                break
+            
+            if remaining_amount >= debt.amount:
+                # Fully settle this debt
+                debt.status = DebtStatus.SETTLED
+                debt.settled_at = datetime.utcnow()
+                remaining_amount -= debt.amount
+                settled_debts.append(debt)
+                print(f"[PAYMENT] Debt {debt.id} fully settled: {debt.amount} TL")
+            else:
+                # Partially pay this debt
+                debt.amount -= remaining_amount
+                partially_paid_debt = {
+                    "debt_id": debt.id,
+                    "paid": remaining_amount,
+                    "remaining": debt.amount
+                }
+                remaining_amount = 0
+                print(f"[PAYMENT] Debt {debt.id} partially paid: {partially_paid_debt['paid']} TL, remaining: {partially_paid_debt['remaining']} TL")
+        
+        self.db.commit()
+        
+        # Calculate remaining total debt
+        remaining_total = sum(
+            debt.amount for debt in self.db.query(Debt).filter(
+                Debt.debtor_id == payer.id,
+                Debt.creditor_id == receiver.id,
+                Debt.status == DebtStatus.ACTIVE
+            ).all()
+        )
+        
+        result = {
+            "success": True,
+            "paid_amount": amount,
+            "settled_count": len(settled_debts),
+            "partially_paid": partially_paid_debt,
+            "remaining_total_debt": remaining_total,
+            "message": f"{amount} TL ödeme yapıldı"
+        }
+        
+        print(f"[PAYMENT] Payment processed: {result}")
         return result
     
     @staticmethod
