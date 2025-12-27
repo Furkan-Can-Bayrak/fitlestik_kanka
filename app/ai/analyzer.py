@@ -214,9 +214,15 @@ class MessageAnalyzer:
         if amount is None:
             amount = total_debt
         
-        # Payment cannot exceed total debt
+        # Track original payment amount
+        original_payment = amount
+        excess_amount = 0
+        
+        # If payment exceeds total debt, create reverse debt
         if amount > total_debt:
-            amount = total_debt
+            excess_amount = amount - total_debt
+            amount = total_debt  # Only pay the debt amount
+            print(f"[PAYMENT] Excess payment detected: {excess_amount} TL - Will create reverse debt")
         
         remaining_amount = amount
         settled_debts = []
@@ -245,6 +251,18 @@ class MessageAnalyzer:
                 remaining_amount = 0
                 print(f"[PAYMENT] Debt {debt.id} partially paid: {partially_paid_debt['paid']} TL, remaining: {partially_paid_debt['remaining']} TL")
         
+        # Create reverse debt if excess payment exists
+        reverse_debt = None
+        if excess_amount > 0:
+            reverse_debt = Debt(
+                debtor_id=receiver.id,  # Receiver now owes to payer
+                creditor_id=payer.id,   # Payer is now creditor
+                amount=excess_amount,
+                status=DebtStatus.ACTIVE
+            )
+            self.db.add(reverse_debt)
+            print(f"[PAYMENT] Reverse debt created: {receiver.username} owes {payer.username} {excess_amount} TL")
+        
         self.db.commit()
         
         # Calculate remaining total debt
@@ -258,11 +276,14 @@ class MessageAnalyzer:
         
         result = {
             "success": True,
-            "paid_amount": amount,
+            "paid_amount": original_payment,
+            "debt_paid": amount,
+            "excess_amount": excess_amount,
+            "reverse_debt_created": reverse_debt is not None,
             "settled_count": len(settled_debts),
             "partially_paid": partially_paid_debt,
             "remaining_total_debt": remaining_total,
-            "message": f"{amount} TL ödeme yapıldı"
+            "message": f"{original_payment} TL ödeme yapıldı" + (f" ({excess_amount} TL fazla ödeme - ters borç oluşturuldu)" if excess_amount > 0 else "")
         }
         
         print(f"[PAYMENT] Payment processed: {result}")

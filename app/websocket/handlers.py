@@ -153,22 +153,46 @@ async def process_message(message_data: dict, sender: User, db: Session):
             payment = analysis_result["payment"]
             
             if payment["success"]:
+                # Build message for payer
+                payer_message = f"✅ {payment['paid_amount']} TL ödeme yaptınız."
+                if payment['remaining_total_debt'] > 0:
+                    payer_message += f" Kalan borç: {payment['remaining_total_debt']} TL"
+                else:
+                    payer_message += " Tüm borçlar kapandı!"
+                
+                if payment.get("reverse_debt_created"):
+                    payer_message += f" {receiver.username} size {payment['excess_amount']} TL borçlu."
+                
                 # Notify payer
                 await manager.send_personal_message({
                     "type": "notification",
                     "category": "payment",
-                    "message": f"✅ {payment['paid_amount']} TL ödeme yaptınız. Kalan borç: {payment['remaining_total_debt']} TL",
+                    "message": payer_message,
                     "paid_amount": payment["paid_amount"],
-                    "remaining_debt": payment["remaining_total_debt"]
+                    "remaining_debt": payment["remaining_total_debt"],
+                    "excess_amount": payment.get("excess_amount", 0),
+                    "reverse_debt": payment.get("reverse_debt_created", False)
                 }, sender.id)
+                
+                # Build message for receiver
+                receiver_message = f"💰 {sender.username}, {payment['paid_amount']} TL ödeme yaptı."
+                if payment['remaining_total_debt'] > 0:
+                    receiver_message += f" Kalan alacak: {payment['remaining_total_debt']} TL"
+                else:
+                    receiver_message += " Tüm alacaklar kapandı!"
+                
+                if payment.get("reverse_debt_created"):
+                    receiver_message += f" Size {payment['excess_amount']} TL borcunuz var."
                 
                 # Notify receiver
                 await manager.send_personal_message({
                     "type": "notification",
                     "category": "payment",
-                    "message": f"💰 {sender.username}, {payment['paid_amount']} TL ödeme yaptı. Kalan alacak: {payment['remaining_total_debt']} TL",
+                    "message": receiver_message,
                     "paid_amount": payment["paid_amount"],
-                    "remaining_debt": payment["remaining_total_debt"]
+                    "remaining_debt": payment["remaining_total_debt"],
+                    "excess_amount": payment.get("excess_amount", 0),
+                    "reverse_debt": payment.get("reverse_debt_created", False)
                 }, receiver.id)
             else:
                 # No debt found
